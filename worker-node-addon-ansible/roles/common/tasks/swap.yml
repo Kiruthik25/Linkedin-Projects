@@ -1,0 +1,17 @@
+---
+# 1. Disable Swap
+- name: Check current swap status
+  ansible.builtin.command: swapon --show
+  register: swap_status
+  changed_when: false
+
+- name: Turn off swap immediately
+  ansible.builtin.command: swapoff -a
+  when: swap_status.stdout != ""
+
+- name: Comment out swap entries in /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s.*)$'
+    replace: '#\1'
+    backup: true

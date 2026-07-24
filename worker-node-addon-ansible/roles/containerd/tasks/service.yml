@@ -1,0 +1,22 @@
+---
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start containerd
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: true
+    state: started
+
+- name: Restart containerd if config was changed
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+  when: containerd_config is defined and containerd_config.stat.exists == false
+
+- name: Verify containerd service is active
+  ansible.builtin.command: systemctl is-active containerd
+  register: containerd_status
+  changed_when: false
+  failed_when: containerd_status.stdout != "active"

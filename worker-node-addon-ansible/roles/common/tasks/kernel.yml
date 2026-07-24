@@ -1,0 +1,24 @@
+---
+# 2. Forwarding IPv4 and letting iptables see bridged traffic (modules)
+- name: Ensure /etc/modules-load.d/k8s.conf declares required modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Check which required modules are already loaded
+  ansible.builtin.command: lsmod
+  register: lsmod_output
+  changed_when: false
+
+- name: Load overlay module now
+  ansible.builtin.command: modprobe overlay
+  when: "'overlay' not in lsmod_output.stdout"
+
+- name: Load br_netfilter module now
+  ansible.builtin.command: modprobe br_netfilter
+  when: "'br_netfilter' not in lsmod_output.stdout"

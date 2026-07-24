@@ -1,0 +1,22 @@
+---
+# 5. Install runc
+- name: Check if runc is already installed
+  ansible.builtin.command: runc --version
+  register: runc_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download runc binary
+  ansible.builtin.get_url:
+    url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ runc_arch }}"
+    dest: "{{ download_dir }}/runc.{{ runc_arch }}"
+    mode: "0755"
+  when: runc_version not in runc_installed.stdout
+
+- name: Install runc to /usr/local/sbin
+  ansible.builtin.copy:
+    src: "{{ download_dir }}/runc.{{ runc_arch }}"
+    dest: /usr/local/sbin/runc
+    mode: "0755"
+    remote_src: true
+  when: runc_version not in runc_installed.stdout

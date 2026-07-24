@@ -1,0 +1,43 @@
+---
+# 4. Install container runtime
+- name: Ensure download directory exists
+  ansible.builtin.file:
+    path: "{{ download_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check if containerd is already installed at the target version
+  ansible.builtin.command: containerd --version
+  register: containerd_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download containerd release tarball
+  ansible.builtin.get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    dest: "{{ download_dir }}/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    mode: "0644"
+  when: containerd_version not in containerd_installed.stdout
+
+- name: Extract containerd to /usr/local
+  ansible.builtin.unarchive:
+    src: "{{ download_dir }}/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  when: containerd_version not in containerd_installed.stdout
+
+- name: Download containerd systemd unit file
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+    dest:  /etc/systemd/system/containerd.service
+    mode: "0644"
+    force: false
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start containerd
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: true
+    state: started

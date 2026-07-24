@@ -1,0 +1,16 @@
+---
+# Bootstraps a fresh node and joins it to the cluster as a worker.
+#
+# Usage:
+#   ansible-playbook playbooks/add_worker.yml --limit worker2
+#
+- name: Prepare and join worker node(s) to the Kubernetes cluster
+  hosts: workers
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - containerd
+    - kubernetes
+    - worker_join

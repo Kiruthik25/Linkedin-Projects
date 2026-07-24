@@ -1,0 +1,24 @@
+---
+# Verify that br_netfilter and overlay modules are loaded
+- name: Verify br_netfilter module is loaded
+  ansible.builtin.command: lsmod
+  register: verify_lsmod
+  changed_when: false
+  failed_when: "'br_netfilter' not in verify_lsmod.stdout or 'overlay' not in verify_lsmod.stdout"
+
+# Verify sysctl values are correctly set to 1
+- name: Verify required sysctl values
+  ansible.builtin.command: >
+    sysctl net.bridge.bridge-nf-call-iptables
+    net.bridge.bridge-nf-call-ip6tables
+    net.ipv4.ip_forward
+  register: verify_sysctl
+  changed_when: false
+  failed_when: >
+    'net.bridge.bridge-nf-call-iptables = 1' not in verify_sysctl.stdout
+    or 'net.bridge.bridge-nf-call-ip6tables = 1' not in verify_sysctl.stdout
+    or 'net.ipv4.ip_forward = 1' not in verify_sysctl.stdout
+
+- name: Show sysctl verification output
+  ansible.builtin.debug:
+    var: verify_sysctl.stdout_lines

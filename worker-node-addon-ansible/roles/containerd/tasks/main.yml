@@ -1,0 +1,15 @@
+---
+- name: Install containerd binaries and systemd unit
+  ansible.builtin.import_tasks: install.yml
+
+- name: Install runc
+  ansible.builtin.import_tasks: runc.yml
+
+- name: Install CNI plugins
+  ansible.builtin.import_tasks: cni.yml
+
+- name: Configure containerd
+  ansible.builtin.import_tasks: configure.yml
+
+- name: Enable and start containerd service
+  ansible.builtin.import_tasks: service.yml

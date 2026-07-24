@@ -1,0 +1,19 @@
+---
+# ---- Kubernetes ----
+kubernetes_series: "1.29"                 # repo series, e.g. v1.29
+kubernetes_package_version: "1.29.6-1.1"  # exact kubelet/kubeadm/kubectl version
+
+# ---- containerd ----
+containerd_version: "1.7.14"
+containerd_arch: "amd64"
+
+# ---- runc ----
+runc_version: "1.1.12"
+runc_arch: "amd64"
+
+# ---- CNI plugins ----
+cni_plugins_version: "1.5.0"
+cni_plugins_arch: "amd64"
+
+# ---- misc ----
+download_dir: "/tmp/k8s-downloads"

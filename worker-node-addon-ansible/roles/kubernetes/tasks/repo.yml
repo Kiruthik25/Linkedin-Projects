@@ -1,0 +1,44 @@
+---
+# 7. Install kubeadm, kubelet and kubectl (repo setup)
+- name: Install apt prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gpg
+    state: present
+    update_cache: true
+
+- name: Ensure /etc/apt/keyrings exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Check if Kubernetes apt key already downloaded
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  register: k8s_apt_key
+
+- name: Download Kubernetes apt signing key
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_series }}/deb/Release.key"
+    dest: "{{ download_dir }}/k8s-release.key"
+    mode: "0644"
+  when: not k8s_apt_key.stat.exists
+
+- name: Dearmor Kubernetes apt signing key
+  ansible.builtin.shell: >
+    gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    {{ download_dir }}/k8s-release.key
+  args:
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  when: not k8s_apt_key.stat.exists
+
+- name: Add Kubernetes apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_series }}/deb/ /"
+    filename: kubernetes
+    state: present
+    update_cache: true

@@ -1,0 +1,13 @@
+---
+# 8. Configure crictl to work with containerd
+- name: Check if crictl runtime-endpoint already set for containerd
+  ansible.builtin.command: >
+    grep -q 'unix:///var/run/containerd/containerd.sock' /etc/crictl.yaml
+  register: crictl_config_check
+  changed_when: false
+  failed_when: false
+
+- name: Configure crictl runtime endpoint for containerd
+  ansible.builtin.command: >
+    crictl config runtime-endpoint unix:///var/run/containerd/containerd.sock
+  when: crictl_config_check.rc != 0

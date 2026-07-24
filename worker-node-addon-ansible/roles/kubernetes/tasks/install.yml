@@ -1,0 +1,21 @@
+---
+- name: Refresh apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Check currently installed kubeadm version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' kubeadm
+  register: kubeadm_current_version
+  changed_when: false
+  failed_when: false
+
+- name: Install kubelet, kubeadm, kubectl at pinned version
+  ansible.builtin.command: >
+    apt-get install -y
+    kubelet={{ kubernetes_package_version }}
+    kubeadm={{ kubernetes_package_version }}
+    kubectl={{ kubernetes_package_version }}
+    --allow-downgrades --allow-change-held-packages
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: kubernetes_package_version not in kubeadm_current_version.stdout
