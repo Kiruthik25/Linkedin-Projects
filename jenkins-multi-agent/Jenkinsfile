@@ -1,0 +1,97 @@
+@Library('kiruthik-library') _
+
+pipeline {
+
+    agent none
+
+    stages {
+
+        stage('Checkout') {
+            agent { label 'linux-agent' }
+             steps {
+                    git branch: 'main',
+                        url: 'https://github.com/Kiruthik25/java-maveen.git'
+                }
+        }
+
+        stage('Compile') {
+            agent { label 'linux-agent' }
+            steps {
+                buildJava()
+            }
+        }
+
+        stage('Unit Test') {
+            agent { label 'linux-agent' }
+            steps {
+                runTests()
+            }
+        }
+
+        stage('Package') {
+            agent { label 'linux-agent' }
+            steps {
+                packageJava()
+                // archiveArtifacts artifacts: 'target/*.jar,Dockerfile', fingerprint: true
+                stash name: 'app', includes: 'target/*.jar,Dockerfile'
+            }
+        }
+
+        // stage('Push to S3') {
+        //     agent { label 'docker-agent' }
+        //     steps {
+        //         pushToS3(
+        //             bucket: 's3://cvwj-devsecops-demo-artifacts',
+        //             artifact: 'target/*.jar'
+        //         )
+        //     }
+        // }
+        
+        stage('Docker Debug') {
+               agent { label 'docker-agent' }
+    steps {
+        sh '''
+            whoami
+            id
+            groups
+            docker version
+            docker info
+            docker ps
+            ls -l /var/run/docker.sock
+            env | grep DOCKER || echo "No DOCKER environment variables"
+        '''
+    }
+}
+
+        stage('Docker Build & Push') {
+            agent { label 'docker-agent' }
+            steps {
+                // Docker Hub login done manually on the EC2 agent, no Jenkins creds
+              git branch: 'main',
+            url: 'https://github.com/Kiruthik25/java-maveen.git     
+           
+         unstash 'app'
+                dockerBuild(
+                    imageName: 'kiruthik067/maveen-demo',
+                    imageTag: env.BUILD_NUMBER,
+                    credentialsId: 'dockerhub-creds'
+                )
+            }
+        }
+
+        stage('Deploy') {
+            agent { label 'kubernets-agent' }
+            steps {
+                
+                 git branch: 'main',
+            url: 'https://github.com/Kiruthik25/java-maveen.git'
+            
+             deployApp(
+                    manifestPath: 'deployment/deployment.yaml'
+                )
+            }
+        }
+    }
+
+    
+}
