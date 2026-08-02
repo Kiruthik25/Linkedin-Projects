@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app1-matrix-clusters
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+
+  generators:
+    - matrix:
+        generators:
+          # Dimension 1: environments from Git
+          - git:
+              repoURL: https://github.com/CloudWithVarJosh/app1-config.git
+              revision: main
+              directories:
+                - path: "*"
+
+          # Dimension 2: clusters (explicit, simple)
+          - list:
+              elements:
+                - region: mumbai
+                  clusterName: in-cluster
+                - region: nvirginia
+                  clusterName: varun.joshi@cwvj-nvirginia.us-east-1.eksctl.io
+
+  template:
+    metadata:
+      name: "app1-{{.path.basename}}-{{.region}}"
+    spec:
+      project: default
+
+      source:
+        repoURL: https://github.com/CloudWithVarJosh/app1-config.git
+        targetRevision: main
+        path: "{{.path.basename}}/manifests"
+
+      destination:
+        name: "{{.clusterName}}"
+        namespace: "app1-{{.path.basename}}-ns"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
