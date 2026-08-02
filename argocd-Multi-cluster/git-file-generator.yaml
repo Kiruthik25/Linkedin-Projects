@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app1-git-files
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+
+  generators:
+    - git:
+        repoURL: https://github.com/CloudWithVarJosh/app1-config.git
+        revision: main
+        files:
+          - path: clusters.yaml
+
+  template:
+    metadata:
+      name: "{{.name}}"
+    spec:
+      project: default
+
+      source:
+        repoURL: https://github.com/CloudWithVarJosh/app1-config.git
+        targetRevision: main
+        path: "{{.region}}/manifests"
+
+      destination:
+        name: "{{.cluster}}"
+        namespace: "{{.namespace}}"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

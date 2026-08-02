@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app1-cluster-generator
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            app: app1
+
+  template:
+    metadata:
+      name: "app1-{{.metadata.labels.region}}"
+    spec:
+      project: default
+
+      source:
+        repoURL: https://github.com/CloudWithVarJosh/app1-config.git
+        targetRevision: main
+        path: "{{.metadata.labels.region}}/manifests"
+
+      destination:
+        name: "{{.name}}"
+        namespace: "app1-{{.metadata.labels.region}}-ns"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
