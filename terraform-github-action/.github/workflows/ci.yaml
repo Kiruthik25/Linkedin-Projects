@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  terraform:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="bucket=${{ secrets.BUCKET_NAME }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -input=false
+        continue-on-error: true
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+        with:
+          script: |
+            const marker = '#### Terraform Plan 📖';
+            const max = 60000;
+
+            let plan = process.env.PLAN || '';
+
+            if (plan.length > max) {
+              plan = plan.substring(0, max) +
+                '\n\n... output truncated, see the Actions log for the full plan.';
+            }
+
+            const body = `${marker}
+            | Step | Result |
+            | ---- | ------ |
+            | fmt \`-check\` | \`${{ steps.fmt.outcome }}\` |
+            | init | \`${{ steps.init.outcome }}\` |
+            | validate | \`${{ steps.validate.outcome }}\` |
+            | plan | \`${{ steps.plan.outcome }}\` |
+
+            <details><summary>Show plan</summary>
+
+            \`\`\`terraform
+            ${plan}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }} · Commit: \`${{ github.sha }}\`*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(
+              comment => comment.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Status gate
+        if: always()
+        run: |
+          if [ "${{ steps.fmt.outcome }}" != "success" ]; then
+            echo "::error::terraform fmt failed"
+            exit 1
+          fi
+
+          if [ "${{ steps.validate.outcome }}" != "success" ]; then
+            echo "::error::terraform validate failed"
+            exit 1
+          fi
+
+          if [ "${{ steps.plan.outcome }}" != "success" ]; then
+            echo "::error::terraform plan failed"
+            exit 1
+          fi
+
