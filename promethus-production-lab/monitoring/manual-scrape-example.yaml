@@ -1,0 +1,8 @@
+# Educational example only.
+# Do not apply this file. It shows what a manual scrape job can look like.
+#
+# scrape_configs:
+#   - job_name: "external-demo"
+#     static_configs:
+#       - targets:
+#           - "example-external-service:9100"

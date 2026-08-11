@@ -1,0 +1,18 @@
+# Values for kube-prometheus-stack.
+# These selectors allow Prometheus to discover ServiceMonitor and PrometheusRule
+# objects without requiring the objects themselves to carry the Helm release label.
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 7d
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+grafana:
+  enabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL

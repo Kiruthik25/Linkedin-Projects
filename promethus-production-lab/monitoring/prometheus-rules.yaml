@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: app-monitoring-rules
+  namespace: monitoring
+  labels:
+    app: app-monitoring
+spec:
+  groups:
+    - name: app-recording-rules
+      interval: 30s
+      rules:
+        - record: service:http_requests:rate5m
+          expr: |
+            sum(rate(app_http_requests_total[5m])) by (service)
+
+        - record: service:http_5xx_ratio:rate5m
+          expr: |
+            (
+              sum(rate(app_http_requests_total{status=~"5.."}[5m])) by (service)
+              /
+              sum(rate(app_http_requests_total[5m])) by (service)
+            )
+
+        - record: service:http_request_duration_p95:5m
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum(rate(app_http_request_duration_seconds_bucket[5m]))
+              by (service, le)
+            )
+
+    - name: app-alerts
+      rules:
+        - alert: ApplicationHigh5xxRate
+          expr: service:http_5xx_ratio:rate5m > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High 5xx rate on {{ $labels.service }}"
+            description: "5xx ratio has been above 5% for more than 2 minutes."
+
+        - alert: ApplicationHighLatency
+          expr: service:http_request_duration_p95:5m > 0.75
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High p95 latency on {{ $labels.service }}"
+            description: "p95 latency has exceeded 750ms for more than 2 minutes."
+
+        - alert: ApplicationTargetDown
+          expr: up{service=~"user-service|order-service|payment-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Application target is down"
+            description: "Prometheus cannot scrape {{ $labels.instance }}."
