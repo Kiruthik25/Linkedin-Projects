@@ -1,0 +1,8 @@
+{
+  "name": "canary-demo",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^5.1.0",
+    "prom-client": "^15.1.3"
+  }
+}
