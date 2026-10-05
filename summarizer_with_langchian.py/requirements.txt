@@ -1,0 +1,9 @@
+openai
+dotenv
+gradio
+scraper
+requests
+bs4
+langchain_core
+langchain_openai
+langchain_groq
